@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDIM - Image Generator</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f3f4f6;
+            min-height: 100vh;
+        }
+        .loading {
+            display: none;
+        }
+        .image-container {
+            display: none;
+        }
+        .custom-shadow {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .btn {
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spinner 1s linear infinite;
+        }
+    </style>
+</head>
+<body class="p-6">
+    <div class="max-w-3xl mx-auto bg-white rounded-lg p-8 custom-shadow">
+        <h1 class="text-4xl font-bold text-gray-800 mb-8 text-center">Image Generator</h1>
+        
+        <form id="imageForm" class="space-y-6">
+            <div class="space-y-2">
+                <label for="prompt" class="block text-lg font-medium text-gray-700">Enter a prompt:</label>
+                <input 
+                    type="text" 
+                    id="prompt" 
+                    name="prompt" 
+                    required
+                    class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
+                    placeholder="Describe the image you want to generate..."
+                >
+            </div>
+            <button 
+                type="submit" 
+                id="generateButton"
+                class="btn w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+                Generate Image
+            </button>
+        </form>
+
+        <div id="loadingIndicator" class="loading mt-8 text-center">
+            <div class="spinner inline-block"></div>
+            <p class="mt-2 text-gray-600 font-medium">Generating Image...</p>
+        </div>
+        
+        <div class="image-container mt-8" id="imageContainer">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Your Generated Image</h2>
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <img 
+                    id="generatedImage" 
+                    src="" 
+                    alt="Generated Image" 
+                    class="w-full rounded-lg shadow-md"
+                >
+                <div class="flex gap-4 mt-6">
+                    <button 
+                        id="deleteButton"
+                        class="btn flex-1 bg-red-500 text-white py-2 px-4 rounded-lg font-medium hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                    >
+                        Delete Image
+                    </button>
+                    <a 
+                        id="downloadButton" 
+                        href="#" 
+                        download 
+                        class="flex-1"
+                    >
+                        <button 
+                            class="btn w-full bg-green-500 text-white py-2 px-4 rounded-lg font-medium hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                        >
+                            Download Image
+                        </button>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById("imageForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+
+            const prompt = document.getElementById("prompt").value;
+            const loadingIndicator = document.getElementById("loadingIndicator");
+            const imageContainer = document.getElementById("imageContainer");
+            const generatedImage = document.getElementById("generatedImage");
+            const deleteButton = document.getElementById("deleteButton");
+            const downloadButton = document.getElementById("downloadButton");
+            const generateButton = document.getElementById("generateButton");
+
+            generateButton.disabled = true;
+            loadingIndicator.style.display = "block";
+            imageContainer.style.display = "none";
+
+            fetch('/generate', {
+                method: 'POST',
+                body: new FormData(document.getElementById("imageForm"))
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'image generation started') {
+                    const imageUrl = '/images/' + data.image_url;
+
+                    const checkImageLoaded = setInterval(() => {
+                        fetch(imageUrl)
+                            .then(res => {
+                                if (res.ok) {
+                                    generatedImage.src = imageUrl;
+                                    downloadButton.href = imageUrl;
+                                    imageContainer.style.display = "block";
+                                    loadingIndicator.style.display = "none";
+                                    clearInterval(checkImageLoaded);
+                                    generateButton.disabled = false;
+
+                                    deleteButton.onclick = function() {
+                                        fetch('/delete/' + data.image_url, {
+                                            method: 'POST'
+                                        }).then(response => response.json())
+                                          .then(data => {
+                                            if (data.status === 'image deleted') {
+                                                generatedImage.src = '';
+                                                loadingIndicator.style.display = "none";
+                                                imageContainer.style.display = "none";
+                                            }
+                                        });
+                                    };
+                                }
+                            })
+                            .catch(err => {
+                                console.error('Error checking image status:', err);
+                            });
+                    }, 2500); 
+                }
+            })
+            .catch(error => {
+                loadingIndicator.style.display = "none";
+                generateButton.disabled = false;
+                alert("Error generating image");
+            });
+        });
+    </script>
+</body>
+</html>
