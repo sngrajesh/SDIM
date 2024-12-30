@@ -8,7 +8,6 @@ This project provides a Flask-based web application that allows users to generat
 - Generate images using the Stable Diffusion model
 - Background processing for image generation
 - Option to download or delete the generated image
-- Loading indicator during image generation
 
 ## Requirements
 
@@ -22,4 +21,12 @@ This project provides a Flask-based web application that allows users to generat
    ```bash
    git clone https://github.com/your-username/stable-diffusion-flask-app.git
    cd stable-diffusion-flask-app
+   pip install -r requirements.txt
+   python app.py
+   ```
 
+2 Using Docker in local:
+   ```bash
+   docker pull rajeshacts/sdim
+   docker run -d -p 5000:5000 --name sdim rajeshacts/sdim:01
+   ```
